@@ -39,7 +39,31 @@
     const day=document.createElement('label');day.className='pay-date';const dayText=document.createElement('span');dayText.textContent='PARA DIA';const dayInput=document.createElement('input');dayInput.setAttribute('aria-label','Data do pagamento');day.append(dayText,dayInput);
     row.append(amount,choices,bank,day);payments.append(row);
   }
-  document.getElementById('print').addEventListener('click',()=>window.print());
+  async function saveContractPdf(){
+    const button=document.getElementById('print');
+    const oldLabel=button.textContent;
+    button.disabled=true;button.textContent='Gerando PDF...';
+    try{
+      if(!window.html2canvas||!window.jspdf)throw new Error('PDF generation library did not load.');
+      await document.fonts.ready;
+      const page=document.querySelector('.page');
+      const canvas=await window.html2canvas(page,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false});
+      const pdf=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+      const maxWidth=210,maxHeight=297,fit=Math.min(maxWidth/canvas.width,maxHeight/canvas.height);
+      const width=canvas.width*fit,height=canvas.height*fit;
+      const image=canvas.toDataURL('image/jpeg',0.94);
+      pdf.addImage(image,'JPEG',(maxWidth-width)/2,(maxHeight-height)/2,width,height,undefined,'FAST');
+      const number=document.getElementById('contractNumber').value.trim();
+      const customer=document.getElementById('customerName').value.trim();
+      const suffix=[number,customer].filter(Boolean).join('_')||'SUN_LINE';
+      const safe=suffix.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/^_+|_+$/g,'');
+      pdf.save('Contrato_'+safe+'.pdf');
+    }catch(error){
+      console.error(error);
+      alert('Could not generate the PDF. Please try again.');
+    }finally{button.disabled=false;button.textContent=oldLabel;}
+  }
+  document.getElementById('print').addEventListener('click',saveContractPdf);
   document.addEventListener('keydown',event=>{
     if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='p'){
       event.preventDefault();window.print();
